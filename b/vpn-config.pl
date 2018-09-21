@@ -1107,10 +1107,11 @@ if ($vcVPN->exists('ipsec')) {
             # and up/down script hook.
             #
             if ($isVti) {
-                if ($lip eq 'any' || $lip eq 'default') {
-                    $lip = '0.0.0.0';
+                my $marklip = $lip;
+                if (defined($dhcp_iface) || $lip eq 'any' || $lip eq 'default') {
+                    $marklip = '0.0.0.0';
                 }
-                my $mark = vtiIntf::isVtimarkpresent($peer, $lip);
+                my $mark = vtiIntf::isVtimarkpresent($peer, $marklip);
                 if (!defined($mark) || $mark eq '') {
                     vpn_die(["vpn", "ipsec", "site-to-site", "peer", $peer, "vti"], "$vpn_cfg_err No mark specified for peer \"$peer\" vti\n");
                 } else {

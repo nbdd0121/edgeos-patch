@@ -115,7 +115,7 @@ if (!$vcVPN->exists('ipsec site-to-site') ) {
     my @peers = $vcVPN->listNodes('ipsec site-to-site peer');
     foreach my $peer (@peers) {
         my $lip = $vcVPN->returnValue("ipsec site-to-site peer $peer local-address");
-        if ($lip eq 'default' || $lip eq 'any') {
+        if (!defined($lip) || $lip eq 'default' || $lip eq 'any') {
             $lip = '0.0.0.0';
         }
         my $tunName = $vcVPN->returnValue("ipsec site-to-site peer $peer vti bind");
@@ -156,7 +156,7 @@ if (!$vcVPN->exists('ipsec site-to-site') ) {
         #
         my $mark;
         my $lip = $vcVPN->returnValue("ipsec site-to-site peer $peer local-address");
-        if ($lip eq 'any' || $lip eq 'default') {
+        if (!defined($lip) || $lip eq 'any' || $lip eq 'default') {
             $lip = '0.0.0.0';
         }
         my $tunName = $vcVPN->returnValue("ipsec site-to-site peer $peer vti bind");
