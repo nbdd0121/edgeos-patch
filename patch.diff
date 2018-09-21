@@ -12,7 +12,7 @@ diff -u a/node.def b/node.def
  syntax:expression: exec "/opt/vyatta/sbin/valid_address $VAR(@)"
 diff -u a/vpn-config.pl b/vpn-config.pl
 --- a/vpn-config.pl	2018-09-21 21:07:34.824295100 +0800
-+++ b/vpn-config.pl	2018-09-21 22:31:34.249533900 +0800
++++ b/vpn-config.pl	2018-09-22 00:44:04.353028300 +0800
 @@ -473,12 +473,6 @@
              #
              if (defined($lip)) {
@@ -44,16 +44,28 @@ diff -u a/vpn-config.pl b/vpn-config.pl
                  }
              }
              if (defined($rightsubnet)) {
-@@ -1113,6 +1107,9 @@
+@@ -996,7 +990,7 @@
+                 my $index2 = (defined($authremoteid)) ? "$authremoteid" : $right;
+                 if (  ($lip eq 'any' || $lip eq 'default' ||
+                           ($key_exchange eq 'ikev1' and $index2 eq '%any')
+-                      ) && !defined($dhcp_iface)) {
++                      ) && !defined($authid) && !defined($dhcp_iface)) {
+                     if ($index1 =~ m/^@/) {
+                         # In main mode PSK, the responder needs to look up the secret
+                         # before the Peer's ID payload has been decoded, so the ID used
+@@ -1113,7 +1107,11 @@
              # and up/down script hook.
              #
              if ($isVti) {
-+                if ($lip eq 'any' || $lip eq 'default') {
-+                    $lip = '0.0.0.0';
+-                my $mark = vtiIntf::isVtimarkpresent($peer, $lip);
++                my $marklip = $lip;
++                if (defined($dhcp_iface) || $lip eq 'any' || $lip eq 'default') {
++                    $marklip = '0.0.0.0';
 +                }
-                 my $mark = vtiIntf::isVtimarkpresent($peer, $lip);
++                my $mark = vtiIntf::isVtimarkpresent($peer, $marklip);
                  if (!defined($mark) || $mark eq '') {
                      vpn_die(["vpn", "ipsec", "site-to-site", "peer", $peer, "vti"], "$vpn_cfg_err No mark specified for peer \"$peer\" vti\n");
+                 } else {
 diff -u a/vtiIntf.pm b/vtiIntf.pm
 --- a/vtiIntf.pm	2018-09-21 21:56:59.785500000 +0800
 +++ b/vtiIntf.pm	2018-09-21 22:05:14.083014800 +0800
@@ -79,12 +91,12 @@ diff -u a/vtiIntf.pm b/vtiIntf.pm
  
 diff -u a/vyatta-vti-config.pl b/vyatta-vti-config.pl
 --- a/vyatta-vti-config.pl	2018-09-21 21:08:31.476826000 +0800
-+++ b/vyatta-vti-config.pl	2018-09-21 22:28:31.761493500 +0800
++++ b/vyatta-vti-config.pl	2018-09-22 00:40:37.280252500 +0800
 @@ -115,6 +115,9 @@
      my @peers = $vcVPN->listNodes('ipsec site-to-site peer');
      foreach my $peer (@peers) {
          my $lip = $vcVPN->returnValue("ipsec site-to-site peer $peer local-address");
-+        if ($lip eq 'default' || $lip eq 'any') {
++        if (!defined($lip) || $lip eq 'default' || $lip eq 'any') {
 +            $lip = '0.0.0.0';
 +        }
          my $tunName = $vcVPN->returnValue("ipsec site-to-site peer $peer vti bind");
@@ -94,7 +106,7 @@ diff -u a/vyatta-vti-config.pl b/vyatta-vti-config.pl
          #
          my $mark;
          my $lip = $vcVPN->returnValue("ipsec site-to-site peer $peer local-address");
-+        if ($lip eq 'any' || $lip eq 'default') {
++        if (!defined($lip) || $lip eq 'any' || $lip eq 'default') {
 +            $lip = '0.0.0.0';
 +        }
          my $tunName = $vcVPN->returnValue("ipsec site-to-site peer $peer vti bind");
