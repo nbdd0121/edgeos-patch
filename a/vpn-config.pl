@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 #
 # Module: vpn-config.pl
 #
@@ -42,9 +42,11 @@ use Vyatta::VPN::vtiIntf;
 my $config_file;
 my $secrets_file;
 my $init_script;
+my $global_config_file;
 GetOptions(
     "config_file=s"  => \$config_file,
     "secrets_file=s" => \$secrets_file,
+    "global_config_file=s"  => \$global_config_file,
     "init_script=s"  => \$init_script
 );
 my $CA_CERT_PATH     = '/etc/ipsec.d/cacerts';
@@ -96,6 +98,7 @@ if ($vcVPN->exists('ipsec')) {
         # XXX for now this will be checked below for site-to-site peer
 
     } else {
+
         foreach my $esp_group (@esp_groups) {
             my @esp_group_proposals = $vcVPN->listNodes("ipsec esp-group $esp_group proposal");
             if (@esp_group_proposals == 0) {
@@ -507,7 +510,7 @@ if ($vcVPN->exists('ipsec')) {
             if ($authremoteid) {
                 $rightid = $authremoteid;
             } else {
-                # Peer is considered FQDN if it's not an "ID-peer" and not an "IP-peer" 
+                # Peer is considered FQDN if it's not an "ID-peer" and not an "IP-peer"
                 my $fqdn_peer = (!$any_peer && !defined(is_ip_v4_or_v6($peer)));
 
                 # Allow %any remote peer when peer is FQDN
@@ -552,7 +555,7 @@ if ($vcVPN->exists('ipsec')) {
             if ($isVti) {
                 $remotesubnet = 'any';
             }
-            
+
             # Check local and remote prefix protocol consistency
             my $leftsubnet_proto   = is_ip_v4_or_v6($leftsubnet);
             my $remotesubnet_proto = is_ip_v4_or_v6($remotesubnet);
@@ -795,7 +798,7 @@ if ($vcVPN->exists('ipsec')) {
                 if (defined($aggressive_mode)) {
                   if (defined($key_exchange) && $key_exchange eq 'ikev2') {
                     vpn_die(["vpn","ipsec","ike-group", $ike_group, "mode"], "$vpn_cfg_err Selection of Main/Aggressive modes is only valid for IKEv1 configurations");
-                  } 
+                  }
                   if ($aggressive_mode eq 'aggressive') {
                     $genout .= "\taggressive=yes\n";
                   } else {
@@ -822,7 +825,7 @@ if ($vcVPN->exists('ipsec')) {
                     $genout .= "\tdpdtimeout=$dpd_timeout" . "s\n";
                     $genout .= "\tdpdaction=$dpd_action\n";
                 }
-                
+
                 #
                 # Allow the user for force UDP encapsulation for the ESP
                 # payload.
@@ -885,7 +888,10 @@ if ($vcVPN->exists('ipsec')) {
                     #
                     # Write values
                     #
-                    if (defined($encryption) && defined($hash)) {
+                    if (defined($encryption) && ($encryption eq 'null')) {
+                        print "WARNING: IPSEC null encryption is dangerous, because it disables encryption.\n";
+                        $genout .= 'null';
+                    } elsif (defined($encryption) && defined($hash)) {
                         $genout .= "$encryption-$hash";
                         if (defined($pfs)) {
                             $genout .= "-$pfs";
@@ -1064,7 +1070,7 @@ if ($vcVPN->exists('ipsec')) {
                         vpn_die(
                             ["vpn", "ipsec", "site-to-site", "peer", $peer, "authentication"],
                             "$vpn_cfg_err Invalid local RSA key file path \"$local_key_file\"."
-                                . " File absent.  Use the 'vpn rsa-key generate' command to create.\n"
+                                . " File absent.  Use the 'generate vpn rsa-key' command to create.\n"
                         );
                     }
                 }
@@ -1079,7 +1085,7 @@ if ($vcVPN->exists('ipsec')) {
                         $public_keys{localhost} = $local_key;
                     }
                     $genout .= "\tleftsigkey=localhost.pub\n";
-                    
+
                 }
 
                 my $rsa_key_name = $vcVPN->returnValue("ipsec site-to-site peer $peer authentication rsa-key-name");
@@ -1178,7 +1184,7 @@ if ($vcVPN->exists('ipsec')) {
             }
         }
     }
-    
+
     #
     # Include a custom configuration file
     #
@@ -1215,10 +1221,26 @@ if ($vcVPN->exists('ipsec')) {
     $genout_secrets .= "# No VPN configuration exists.\n";
 }
 
+# Generate ipsec global conf file for vyatta configuration 'set vpn ipsec global-config'.
+my $global_genout  = "";
+if ($vcVPN->exists('ipsec global-config')) {
+    my @global_options = $vcVPN->returnValues("ipsec global-config");
+    if (@global_options != 0) {
+       foreach my $global_option (@global_options) {
+          $global_genout .= "$global_option\n";
+       }
+    }
+}
+
 if (!(defined($config_file) && ($config_file ne '') && defined($secrets_file) && ($secrets_file ne ''))) {
     print "Regular config file output would be:\n\n$genout\n\n";
     print "Secrets config file output would be:\n\n$genout_secrets\n\n";
     exit(0);
+}
+
+my $DEFAULT_GLOBAL_CONFIG_FILE='/etc/strongswan.d/ubnt_strongswan.conf.override';
+if (!(defined($global_config_file) && ($global_config_file ne '')) ) {
+    $global_config_file = $DEFAULT_GLOBAL_CONFIG_FILE;
 }
 
 if (   $vcVPN->isDeleted('.')
@@ -1236,12 +1258,14 @@ if (   $vcVPN->isDeleted('.')
         vpn_die(["vpn", "ipsec"], "VPN commit error.  Unable to re-enable ICMP redirects.\n");
     }
     write_config($genout, $config_file, $genout_secrets, $secrets_file, $dhcp_if, %public_keys);
+    write_global_config($global_genout, $global_config_file);
 } else {
     if (!enableICMP('0')) {
         vpn_die(["vpn", "ipsec"], "VPN commit error.  Unable to disable ICMP redirects.\n");
     }
 
     write_config($genout, $config_file, $genout_secrets, $secrets_file, $dhcp_if, %public_keys);
+    write_global_config($global_genout, $global_config_file);
 
     # Assumming that if there was a local IP missmatch and clustering is enabled,
     # then the clustering scripts will take care of starting the VPN daemon.
@@ -1279,7 +1303,7 @@ if (   $vcVPN->isDeleted('.')
                 foreach my $tunnel (@tunnel_cfg_old) {
                     push (@old_tunnels, $tunnel) unless exists $seen{$tunnel};
                 }
-                
+
                 # Issue an ipsec down on the old tunnel since charon doesn't clean up
                 # connections removed from ipsec.conf
                 foreach my $old_peer (@old_tunnels) {
@@ -1300,7 +1324,7 @@ if (   $vcVPN->isDeleted('.')
                 vpn_exec('ipsec start --auto-update ' . $update_interval . ' >&/dev/null', 'start ipsec with auto-update $update_interval');
             }
         }
-        
+
         # Activate any debugging options by
         # calling ipsec stroke loglevel <source> <level>
         my @logmodes = $vcVPN->returnValues('ipsec logging log-modes');
@@ -1327,10 +1351,17 @@ sub run_ipt {
 }
 
 my $auto_fw_nat = $vcVPN->returnValue('ipsec auto-firewall-nat-exclude');
+my $auto_fw_atli = $vcVPN->returnValue('ipsec allow-access-to-local-interface');
 my $hook_fw     = 'UBNT_VPN_IPSEC_FW_HOOK';
 my $hook_fw_in  = 'UBNT_VPN_IPSEC_FW_IN_HOOK';
 my $hook_nat    = 'UBNT_VPN_IPSEC_SNAT_HOOK';
 my $flush_ct    = 0;
+
+
+if ((defined($auto_fw_atli) && $auto_fw_atli eq 'enable') && !(defined($auto_fw_nat) && $auto_fw_nat eq 'enable')) {
+    vpn_die(["vpn", "ipsec", "allow-access-to-local-interface"],
+        "$vpn_cfg_err The 'vpn ipsec auto-firewall-nat-exclude' has not been enabled.");
+}
 
 if (defined($auto_fw_nat) && $auto_fw_nat eq 'enable') {
     run_ipt("-F $hook_fw");
@@ -1355,6 +1386,9 @@ if (defined($auto_fw_nat) && $auto_fw_nat eq 'enable') {
                 $flush_ct = 1;
                 run_ipt("-t nat -A $hook_nat -s $lsub -d $rsub -j ACCEPT");
                 run_ipt("-A $hook_fw_in -s $rsub -d $lsub -j ACCEPT");
+                if (defined($auto_fw_atli) && $auto_fw_atli eq 'enable') {
+                    run_ipt("-A $hook_fw -s $rsub -d $lsub -j ACCEPT");
+                }
             }
         }
     }
@@ -1372,6 +1406,22 @@ sub vpn_die {
     my (@path, $msg) = @_;
     Vyatta::Config::outputError(@path, $msg);
     exit 1;
+}
+
+sub write_global_config {
+    my ($genout_text, $global_config_file) = @_;
+
+    if ($genout_text ne "") {
+        my $IPSEC_FORMAT_OPTIONS_SC='/opt/vyatta/bin/strongswan-format-options.py';
+        my @gencmds = (qq(echo "# generated by $0\n" > $global_config_file &&
+            echo "$genout_text" | python $IPSEC_FORMAT_OPTIONS_SC -f conf >> $global_config_file));
+        system(@gencmds) == 0
+            or die "Error: Generate user global configuration failed!";
+    } else {
+        open my $output_config, '>', $global_config_file
+            or die "Can't open $global_config_file: $!";
+        close $output_config;
+    }
 }
 
 sub write_config {
@@ -1604,7 +1654,7 @@ EOS
     close $dhcp_hook;
 }
 
-sub get_dh_cipher_result { 
+sub get_dh_cipher_result {
     my ($cipher) = @_;
 
     return 'unknown' if ! defined $cipher;

@@ -25,7 +25,7 @@
 #
 # For each VTI tunnel (vpn ipsec site-to-site peer ip-address sti); find the vti tunnel, local address, mark.
 #   Find the corresponding tunnel (interfaces vti vtiXXX), tunnel address, disable, mtu
-#        if not configured: ip tunnel add vtiXXX mode esp local $local remote $remote i_key $mark
+#        if not configured: ip tunnel add vtiXXX mode esp local $local remote $remote key $mark
 #                           if (mtu): configure mtu
 #                           if (tunnel-addres): configur ip link vtiXXX address
 #                           if (!disable): enable the interface.
@@ -115,9 +115,12 @@ if (!$vcVPN->exists('ipsec site-to-site') ) {
     my @peers = $vcVPN->listNodes('ipsec site-to-site peer');
     foreach my $peer (@peers) {
         my $lip = $vcVPN->returnValue("ipsec site-to-site peer $peer local-address");
-        if (!defined($lip) || $lip eq 'default' || $lip eq 'any') {
+
+        # Support for dhcp-interface option
+        if (!defined($lip) || $lip eq 'any' || $lip eq 'default') {
             $lip = '0.0.0.0';
         }
+
         my $tunName = $vcVPN->returnValue("ipsec site-to-site peer $peer vti bind");
 
         # Do not delete old VTI tunnels if we are not going to create new one
@@ -156,7 +159,7 @@ if (!$vcVPN->exists('ipsec site-to-site') ) {
         #
         my $mark;
         my $lip = $vcVPN->returnValue("ipsec site-to-site peer $peer local-address");
-        if (!defined($lip) || $lip eq 'any' || $lip eq 'default') {
+        if (!defined($lip) || $lip eq 'default' || $lip eq 'any') {
             $lip = '0.0.0.0';
         }
         my $tunName = $vcVPN->returnValue("ipsec site-to-site peer $peer vti bind");
@@ -164,7 +167,11 @@ if (!$vcVPN->exists('ipsec site-to-site') ) {
 
         # Check local address is valid.
         if (!defined($lip)) {
-            print STDERR "$vti_cfg_err local-address not defined.\n";
+            if ($vcVPN->exists("ipsec site-to-site peer $peer dhcp-interface")) {
+                print STDERR "$vti_cfg_err combination of dhcp-interface and VTI is not supported.\n";
+            } else {
+                print STDERR "$vti_cfg_err local-address not defined.\n";
+            }
             exit -1;
         }
         if (!(validateType('ipv4', $lip, 'quiet') || 
@@ -241,7 +248,7 @@ if (!$vcVPN->exists('ipsec site-to-site') ) {
         #
         # By default we delete the tunnel...
         my $genmark = $mark;
-        $gencmds .= "sudo /sbin/ip link add $tunName type vti local $lip remote $peer okey $genmark\n";
+        $gencmds .= "sudo /sbin/ip link add $tunName type vti local $lip remote $peer key $genmark\n";
         foreach my $tunIP (@tunIPs) {
             $gencmds .= "sudo /sbin/ip addr add $tunIP dev $tunName\n";
         }
@@ -254,7 +261,7 @@ if (!$vcVPN->exists('ipsec site-to-site') ) {
             $gencmds .= "sudo /sbin/ip link set $tunName up\n";
         }
         $gencmds .= "sudo sysctl -q -w net.ipv4.conf.$tunName.disable_policy=1\n";
-        $gencmds .= "sudo sysctl -q -w net.ipv4.conf.$tunName.disable_xfrm=1\n";
+        #$gencmds .= "sudo sysctl -q -w net.ipv4.conf.$tunName.disable_xfrm=1\n";
     }
 
     cleanupVtiNotConfigured();

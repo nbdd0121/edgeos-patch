@@ -1,6 +1,6 @@
 diff -u a/node.def b/node.def
---- a/node.def	2018-09-21 23:26:41.979116500 +0800
-+++ b/node.def	2018-09-21 23:20:55.951525100 +0800
+--- a/node.def	2018-09-21 16:26:41.979116500 +0100
++++ b/node.def	2018-09-21 16:20:55.951525100 +0100
 @@ -1,6 +1,7 @@
  multi:
 -type: ipv4net
@@ -11,9 +11,9 @@ diff -u a/node.def b/node.def
  
  syntax:expression: exec "/opt/vyatta/sbin/valid_address $VAR(@)"
 diff -u a/vpn-config.pl b/vpn-config.pl
---- a/vpn-config.pl	2018-09-21 21:07:34.824295100 +0800
-+++ b/vpn-config.pl	2018-09-22 00:44:04.353028300 +0800
-@@ -473,12 +473,6 @@
+--- a/vpn-config.pl	2019-04-02 22:16:18.249707800 +0100
++++ b/vpn-config.pl	2019-04-02 22:16:22.366606600 +0100
+@@ -476,12 +476,6 @@
              #
              if (defined($lip)) {
                  if ($lip eq 'any' || $lip eq 'default') {
@@ -26,7 +26,7 @@ diff -u a/vpn-config.pl b/vpn-config.pl
                      if ($lip eq 'default') {
                          $genout .= "\tleft=%defaultroute\n";
                      } else {
-@@ -541,7 +535,7 @@
+@@ -544,7 +538,7 @@
              #
              my $leftsubnet = $vcVPN->returnValue("ipsec site-to-site peer $peer $tunKeyword local prefix");
              if ((defined($leftsubnet) && $leftsubnet eq 'any') || $isVti == 1) {
@@ -35,7 +35,7 @@ diff -u a/vpn-config.pl b/vpn-config.pl
              }
  
              if (defined($leftsubnet)) {
-@@ -629,7 +623,7 @@
+@@ -632,7 +626,7 @@
              } else {
                  $rightsubnet = $remotesubnet;
                  if (defined($rightsubnet) && $rightsubnet eq 'any') {
@@ -44,7 +44,7 @@ diff -u a/vpn-config.pl b/vpn-config.pl
                  }
              }
              if (defined($rightsubnet)) {
-@@ -996,7 +990,7 @@
+@@ -1002,7 +996,7 @@
                  my $index2 = (defined($authremoteid)) ? "$authremoteid" : $right;
                  if (  ($lip eq 'any' || $lip eq 'default' ||
                            ($key_exchange eq 'ikev1' and $index2 eq '%any')
@@ -53,7 +53,7 @@ diff -u a/vpn-config.pl b/vpn-config.pl
                      if ($index1 =~ m/^@/) {
                          # In main mode PSK, the responder needs to look up the secret
                          # before the Peer's ID payload has been decoded, so the ID used
-@@ -1113,7 +1107,11 @@
+@@ -1119,7 +1113,11 @@
              # and up/down script hook.
              #
              if ($isVti) {
@@ -67,8 +67,8 @@ diff -u a/vpn-config.pl b/vpn-config.pl
                      vpn_die(["vpn", "ipsec", "site-to-site", "peer", $peer, "vti"], "$vpn_cfg_err No mark specified for peer \"$peer\" vti\n");
                  } else {
 diff -u a/vtiIntf.pm b/vtiIntf.pm
---- a/vtiIntf.pm	2018-09-21 21:56:59.785500000 +0800
-+++ b/vtiIntf.pm	2018-09-21 22:05:14.083014800 +0800
+--- a/vtiIntf.pm	2018-09-21 14:56:59.785500000 +0100
++++ b/vtiIntf.pm	2018-09-21 15:05:14.083014800 +0100
 @@ -70,6 +70,9 @@
      if ($tunop =~ m/local ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)/) {
          $local = $1;
@@ -90,29 +90,32 @@ diff -u a/vtiIntf.pm b/vtiIntf.pm
  }
  
 diff -u a/vyatta-vti-config.pl b/vyatta-vti-config.pl
---- a/vyatta-vti-config.pl	2018-09-21 21:08:31.476826000 +0800
-+++ b/vyatta-vti-config.pl	2018-09-22 00:40:37.280252500 +0800
-@@ -115,6 +115,9 @@
-     my @peers = $vcVPN->listNodes('ipsec site-to-site peer');
+--- a/vyatta-vti-config.pl	2019-04-02 22:16:30.316727000 +0100
++++ b/vyatta-vti-config.pl	2019-04-02 22:16:34.372365800 +0100
+@@ -116,8 +116,10 @@
      foreach my $peer (@peers) {
+         my $lip = $vcVPN->returnValue("ipsec site-to-site peer $peer local-address");
+ 
+-        # Do not support dhcp-interface option
+-        next if (!defined($lip));
++        # Support for dhcp-interface option
++        if (!defined($lip) || $lip eq 'any' || $lip eq 'default') {
++            $lip = '0.0.0.0';
++        }
+ 
+         my $tunName = $vcVPN->returnValue("ipsec site-to-site peer $peer vti bind");
+ 
+@@ -157,6 +159,9 @@
+         #
+         my $mark;
          my $lip = $vcVPN->returnValue("ipsec site-to-site peer $peer local-address");
 +        if (!defined($lip) || $lip eq 'default' || $lip eq 'any') {
 +            $lip = '0.0.0.0';
 +        }
          my $tunName = $vcVPN->returnValue("ipsec site-to-site peer $peer vti bind");
- 
-         # Do not delete old VTI tunnels if we are not going to create new one
-@@ -153,6 +156,9 @@
-         #
-         my $mark;
-         my $lip = $vcVPN->returnValue("ipsec site-to-site peer $peer local-address");
-+        if (!defined($lip) || $lip eq 'any' || $lip eq 'default') {
-+            $lip = '0.0.0.0';
-+        }
-         my $tunName = $vcVPN->returnValue("ipsec site-to-site peer $peer vti bind");
          my $change = 0;
  
-@@ -162,7 +168,7 @@
+@@ -170,7 +175,7 @@
              exit -1;
          }
          if (!(validateType('ipv4', $lip, 'quiet') || 
