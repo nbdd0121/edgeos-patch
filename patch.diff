@@ -89,9 +89,31 @@ diff -u a/vtiIntf.pm b/vtiIntf.pm
      return($remote, $local);
  }
  
+diff -u a/vyatta-interfaces.pl b/vyatta-interfaces.pl
+--- a/vyatta-interfaces.pl	2019-04-08 00:18:02.444288700 +0100
++++ b/vyatta-interfaces.pl	2019-04-08 00:37:02.939893100 +0100
+@@ -357,10 +357,13 @@
+ 	next if ($addr eq 'dhcpv6');
+ 	if ($addr eq 'dhcp') {
+ 	    $dhcp = 1;
+-  } elsif (!Vyatta::Interface::is_uniq_address($addr)) {
+-    my $h = Vyatta::Misc::get_ipnet_intf_hash();
+-            print "Error: duplicate address $addr on $h->{$addr}\n";
+-            exit 1;
++	    next;
++	}
++	my $is_single = is_ipv4($addr) ? substr($addr, -3) eq '/32' : substr($addr, -4) eq '/128';
++	if (!$is_single && !Vyatta::Interface::is_uniq_address($addr)) {
++	    my $h = Vyatta::Misc::get_ipnet_intf_hash();
++	    print "Error: duplicate address $addr on $h->{$addr}\n";
++	    exit 1;
+ 	} elsif ( is_ipv4($addr) ) {
+ 	    $static_v4 = 1;
+         }
+Only in b: .vyatta-interfaces.pl.swp
 diff -u a/vyatta-vti-config.pl b/vyatta-vti-config.pl
 --- a/vyatta-vti-config.pl	2019-04-02 22:16:30.316727000 +0100
-+++ b/vyatta-vti-config.pl	2019-04-02 22:16:34.372365800 +0100
++++ b/vyatta-vti-config.pl	2019-04-02 22:22:19.999093700 +0100
 @@ -116,8 +116,10 @@
      foreach my $peer (@peers) {
          my $lip = $vcVPN->returnValue("ipsec site-to-site peer $peer local-address");

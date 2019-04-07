@@ -6,6 +6,7 @@ This tiny project patches EdgeOS/VyOS to support:
 * Negotiate ::/0 in addition to 0.0.0.0/0 when vti is used.
 * Allow IPv6 addresses to be used on vti interfaces.
 * Allow vti to be used along with dhcp-interface
+* Allow duplicate assignment of /32 (v4) and /128 (v6) addresses
 
 Usage is simple: cd to the project directory, and do
 ```
