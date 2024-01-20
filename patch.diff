@@ -1,6 +1,6 @@
 diff -u a/node.def b/node.def
---- a/node.def	2018-09-21 16:26:41.979116500 +0100
-+++ b/node.def	2018-09-21 16:20:55.951525100 +0100
+--- a/node.def	2023-01-10 22:31:03.213543174 +0000
++++ b/node.def	2023-01-10 22:25:55.977325048 +0000
 @@ -1,6 +1,7 @@
  multi:
 -type: ipv4net
@@ -11,8 +11,8 @@ diff -u a/node.def b/node.def
  
  syntax:expression: exec "/opt/vyatta/sbin/valid_address $VAR(@)"
 diff -u a/vpn-config.pl b/vpn-config.pl
---- a/vpn-config.pl	2019-04-02 22:16:18.249707800 +0100
-+++ b/vpn-config.pl	2019-04-02 22:16:22.366606600 +0100
+--- a/vpn-config.pl	2023-01-10 22:31:03.165541906 +0000
++++ b/vpn-config.pl	2023-01-10 22:25:55.977325048 +0000
 @@ -476,12 +476,6 @@
              #
              if (defined($lip)) {
@@ -67,19 +67,19 @@ diff -u a/vpn-config.pl b/vpn-config.pl
                      vpn_die(["vpn", "ipsec", "site-to-site", "peer", $peer, "vti"], "$vpn_cfg_err No mark specified for peer \"$peer\" vti\n");
                  } else {
 diff -u a/vtiIntf.pm b/vtiIntf.pm
---- a/vtiIntf.pm	2018-09-21 14:56:59.785500000 +0100
-+++ b/vtiIntf.pm	2018-09-21 15:05:14.083014800 +0100
-@@ -70,6 +70,9 @@
+--- a/vtiIntf.pm	2023-01-10 22:31:03.201542858 +0000
++++ b/vtiIntf.pm	2024-01-20 20:46:57.832462021 +0000
+@@ -69,6 +69,9 @@
      if ($tunop =~ m/local ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)/) {
          $local = $1;
      }
 +    if ($tunop =~ m/local any/) {
 +        $local = '0.0.0.0';
 +    }
-     if ($tunop =~ m/okey ([0-9\.]+)/) {
+     if ($tunop =~ m/key ([0-9\.]+)/) {
          $mark = $1;
      }
-@@ -85,6 +88,9 @@
+@@ -84,6 +87,9 @@
      if ($key =~ m/local ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)/) {
          $local = $1;
      }
@@ -90,8 +90,8 @@ diff -u a/vtiIntf.pm b/vtiIntf.pm
  }
  
 diff -u a/vyatta-interfaces.pl b/vyatta-interfaces.pl
---- a/vyatta-interfaces.pl	2019-04-08 00:18:02.444288700 +0100
-+++ b/vyatta-interfaces.pl	2019-04-08 00:37:02.939893100 +0100
+--- a/vyatta-interfaces.pl	2023-01-10 22:31:03.217543279 +0000
++++ b/vyatta-interfaces.pl	2023-01-10 22:25:55.977325048 +0000
 @@ -357,10 +357,13 @@
  	next if ($addr eq 'dhcpv6');
  	if ($addr eq 'dhcp') {
@@ -110,10 +110,9 @@ diff -u a/vyatta-interfaces.pl b/vyatta-interfaces.pl
  	} elsif ( is_ipv4($addr) ) {
  	    $static_v4 = 1;
          }
-Only in b: .vyatta-interfaces.pl.swp
 diff -u a/vyatta-vti-config.pl b/vyatta-vti-config.pl
---- a/vyatta-vti-config.pl	2019-04-02 22:16:30.316727000 +0100
-+++ b/vyatta-vti-config.pl	2019-04-02 22:22:19.999093700 +0100
+--- a/vyatta-vti-config.pl	2023-01-10 22:31:03.181542329 +0000
++++ b/vyatta-vti-config.pl	2023-01-10 22:25:55.977325048 +0000
 @@ -116,8 +116,10 @@
      foreach my $peer (@peers) {
          my $lip = $vcVPN->returnValue("ipsec site-to-site peer $peer local-address");

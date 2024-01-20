@@ -33,9 +33,8 @@ my %existingVtiName = ();
 my %existingVtibyName = ();
 my %existingVtiMark = ();
 my @VtiMarks;
-my $vtiMarkBase = 0x900000;
-my $maxMarks = 2048;
-
+my $maxMarks = 512; # Limiting VTI fwmark to 9 bits
+my $vtiMarkShift = 14; # Left-shift fwmark bits to match 0x007FC000 mask
 sub discoverVtiIntfs {
     my @currentVtis = `/sbin/ip tunnel | grep "^vti"`;
     if (@currentVtis != 0) {
@@ -46,7 +45,7 @@ sub discoverVtiIntfs {
             $key = "remote $remote local $local";
             $existingVtiName{$key} = $name;
             $existingVtiMark{$key} = $mark;
-            $VtiMarks[$mark-$vtiMarkBase] = 1;
+            $VtiMarks[$mark >> $vtiMarkShift] = 1;
             $existingVtibyName{$name} = 1;
         }
     }
@@ -70,7 +69,7 @@ sub parseVtiTun {
     if ($tunop =~ m/local ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)/) {
         $local = $1;
     }
-    if ($tunop =~ m/okey ([0-9\.]+)/) {
+    if ($tunop =~ m/key ([0-9\.]+)/) {
         $mark = $1;
     }
     return($remote, $local, $tunName, $mark);
@@ -128,7 +127,7 @@ sub allocVtiMark {
     for my $cmark (1 .. ($maxMarks-1)) {
         if (! defined($VtiMarks[$cmark])) {
             $VtiMarks[$cmark] = 1;
-            return $cmark + $vtiMarkBase ;
+            return $cmark << $vtiMarkShift;
         }
     }
     return 0;
