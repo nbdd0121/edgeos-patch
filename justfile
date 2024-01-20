@@ -3,7 +3,7 @@ default:
     just --list
 
 gen_patch:
-    diff -u a b > patch.diff || true
+    diff -urN a b > patch.diff || true
 
 # Fetch files
 fetch:
@@ -39,6 +39,8 @@ override:
     mv /tmp/patched/vyatta-vti-config.pl /opt/vyatta/sbin/
     mv /tmp/patched/vtiIntf.pm /opt/vyatta/share/perl5/Vyatta/VPN/
     mv /tmp/patched/vti-address-node.def /opt/vyatta/share/vyatta-cfg/templates/interfaces/vti/node.tag/address/node.def
+    mkdir -p /opt/vyatta/share/vyatta-cfg/templates/interfaces/ipv6-tunnel/node.tag/dev
+    mv /tmp/patched/ipv6-tunnel-dev-node.def /opt/vyatta/share/vyatta-cfg/templates/interfaces/ipv6-tunnel/node.tag/dev/node.def
     mv /tmp/patched/vyatta-interfaces.pl /opt/vyatta/sbin/
     rm -rf /tmp/patched
     exit

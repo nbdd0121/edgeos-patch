@@ -1,0 +1,7 @@
+type: txt
+help: Physical device that this tunnel is associated to
+
+delete:expression: "false" ; \
+                   "dev can only be removed at tunnel creation for $VAR(../@)"
+
+update: sudo ip -6 tunnel cha $VAR(../@) dev $VAR(@)
