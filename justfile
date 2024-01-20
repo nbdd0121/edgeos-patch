@@ -7,8 +7,19 @@ gen_patch:
 
 # Fetch files
 fetch:
-    mkdir -p fetched
-    scp -O $TARGET:/opt/vyatta/\{sbin/vpn-config.pl,sbin/vyatta-vti-config.pl,share/perl5/Vyatta/VPN/vtiIntf.pm,share/vyatta-cfg/templates/interfaces/vti/node.tag/address/node.def,sbin/vyatta-interfaces.pl\} fetched
+    rm -rf fetched
+    #!/usr/bin/env bash
+    ssh -tt $TARGET <<EOF
+    mkdir /tmp/original
+    cp /opt/vyatta/sbin/vpn-config.pl /tmp/original
+    cp /opt/vyatta/sbin/vyatta-vti-config.pl /tmp/original
+    cp /opt/vyatta/share/perl5/Vyatta/VPN/vtiIntf.pm /tmp/original
+    cp /opt/vyatta/share/vyatta-cfg/templates/interfaces/vti/node.tag/address/node.def /tmp/original/vti-address-node.def
+    cp /opt/vyatta/sbin/vyatta-interfaces.pl /tmp/original
+    exit
+    EOF
+    scp -r $TARGET:/tmp/original fetched
+    ssh $TARGET -- rm -rf /tmp/original
 
 # Patch fetched files
 patch: gen_patch
@@ -27,7 +38,7 @@ override:
     mv /tmp/patched/vpn-config.pl /opt/vyatta/sbin
     mv /tmp/patched/vyatta-vti-config.pl /opt/vyatta/sbin/
     mv /tmp/patched/vtiIntf.pm /opt/vyatta/share/perl5/Vyatta/VPN/
-    mv /tmp/patched/node.def /opt/vyatta/share/vyatta-cfg/templates/interfaces/vti/node.tag/address/
+    mv /tmp/patched/vti-address-node.def /opt/vyatta/share/vyatta-cfg/templates/interfaces/vti/node.tag/address/node.def
     mv /tmp/patched/vyatta-interfaces.pl /opt/vyatta/sbin/
     rm -rf /tmp/patched
     exit

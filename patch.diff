@@ -1,17 +1,5 @@
-diff -u a/node.def b/node.def
---- a/node.def	2023-01-10 22:31:03.213543174 +0000
-+++ b/node.def	2023-01-10 22:25:55.977325048 +0000
-@@ -1,6 +1,7 @@
- multi:
--type: ipv4net
-+type: txt
- val_help: ipv4net; IPv4 address and prefix length
-+val_help: ipv6net; IPv6 address and prefix length
- help: IP address
- 
- syntax:expression: exec "/opt/vyatta/sbin/valid_address $VAR(@)"
 diff -u a/vpn-config.pl b/vpn-config.pl
---- a/vpn-config.pl	2023-01-10 22:31:03.165541906 +0000
+--- a/vpn-config.pl	2024-01-20 21:13:18.205128779 +0000
 +++ b/vpn-config.pl	2023-01-10 22:25:55.977325048 +0000
 @@ -476,12 +476,6 @@
              #
@@ -66,8 +54,20 @@ diff -u a/vpn-config.pl b/vpn-config.pl
                  if (!defined($mark) || $mark eq '') {
                      vpn_die(["vpn", "ipsec", "site-to-site", "peer", $peer, "vti"], "$vpn_cfg_err No mark specified for peer \"$peer\" vti\n");
                  } else {
+diff -u a/vti-address-node.def b/vti-address-node.def
+--- a/vti-address-node.def	2024-01-20 21:13:18.206128806 +0000
++++ b/vti-address-node.def	2023-01-10 22:25:55.977325048 +0000
+@@ -1,6 +1,7 @@
+ multi:
+-type: ipv4net
++type: txt
+ val_help: ipv4net; IPv4 address and prefix length
++val_help: ipv6net; IPv6 address and prefix length
+ help: IP address
+ 
+ syntax:expression: exec "/opt/vyatta/sbin/valid_address $VAR(@)"
 diff -u a/vtiIntf.pm b/vtiIntf.pm
---- a/vtiIntf.pm	2023-01-10 22:31:03.201542858 +0000
+--- a/vtiIntf.pm	2024-01-20 21:13:18.206128806 +0000
 +++ b/vtiIntf.pm	2024-01-20 20:46:57.832462021 +0000
 @@ -69,6 +69,9 @@
      if ($tunop =~ m/local ([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)/) {
@@ -90,7 +90,7 @@ diff -u a/vtiIntf.pm b/vtiIntf.pm
  }
  
 diff -u a/vyatta-interfaces.pl b/vyatta-interfaces.pl
---- a/vyatta-interfaces.pl	2023-01-10 22:31:03.217543279 +0000
+--- a/vyatta-interfaces.pl	2024-01-20 21:13:18.206128806 +0000
 +++ b/vyatta-interfaces.pl	2023-01-10 22:25:55.977325048 +0000
 @@ -357,10 +357,13 @@
  	next if ($addr eq 'dhcpv6');
@@ -111,7 +111,7 @@ diff -u a/vyatta-interfaces.pl b/vyatta-interfaces.pl
  	    $static_v4 = 1;
          }
 diff -u a/vyatta-vti-config.pl b/vyatta-vti-config.pl
---- a/vyatta-vti-config.pl	2023-01-10 22:31:03.181542329 +0000
+--- a/vyatta-vti-config.pl	2024-01-20 21:13:18.206128806 +0000
 +++ b/vyatta-vti-config.pl	2023-01-10 22:25:55.977325048 +0000
 @@ -116,8 +116,10 @@
      foreach my $peer (@peers) {
